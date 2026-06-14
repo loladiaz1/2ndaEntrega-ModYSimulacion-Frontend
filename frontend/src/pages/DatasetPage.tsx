@@ -17,9 +17,12 @@ export function DatasetPage() {
 
   async function refreshSummary() {
     try {
-      setSummary(await getDatasetSummary());
+      const nextSummary = await getDatasetSummary();
+      setSummary(nextSummary);
+      return nextSummary;
     } catch {
       setSummary(undefined);
+      return undefined;
     }
   }
 
@@ -29,6 +32,7 @@ export function DatasetPage() {
     if (!file) return;
     setLoading(true);
     setError("");
+    setMessage("");
     try {
       const result = await uploadCsv(file);
       setMessage(`CSV importado correctamente. Filas procesadas: ${result.rows_inserted ?? result.inserted ?? "-"}`);
@@ -43,10 +47,15 @@ export function DatasetPage() {
   async function handleSeed() {
     setLoading(true);
     setError("");
+    setMessage("");
     try {
       const result = await seedDemo();
-      setMessage(`Datos demo cargados. Filas insertadas: ${result.rows_inserted ?? result.inserted ?? "-"}`);
-      await refreshSummary();
+      const nextSummary = await refreshSummary();
+      const insertedRows = result.rows_inserted ?? result.inserted ?? result.created ?? result.count;
+      const totalMeasurements = nextSummary?.total_measurements;
+      setMessage(
+        `Datos demo cargados correctamente. Filas insertadas: ${insertedRows ?? "-"}. Total de mediciones: ${formatNumber(totalMeasurements)}`
+      );
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
