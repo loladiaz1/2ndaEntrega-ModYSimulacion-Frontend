@@ -11,6 +11,17 @@ interface Props {
   kind?: "time" | "bifurcation" | "phase";
 }
 
+interface ScenarioRow {
+  name?: string;
+  final_I?: number;
+  final_V?: number;
+  max_I?: number;
+  max_V?: number;
+  max_I_time?: number;
+  max_V_time?: number;
+  risk?: { risk_level?: string; risk_score?: number };
+}
+
 export function SimulationResultPanel({ result, kind = "time" }: Props) {
   if (!result) {
     return (
@@ -20,6 +31,7 @@ export function SimulationResultPanel({ result, kind = "time" }: Props) {
     );
   }
   const stability = typeof result.stability === "string" ? result.stability : result.stability?.classification;
+  const scenarios = (result as unknown as { scenarios?: ScenarioRow[] }).scenarios ?? [];
   return (
     <div className="space-y-4">
       <Card>
@@ -58,6 +70,7 @@ export function SimulationResultPanel({ result, kind = "time" }: Props) {
         </Card>
       </div>
 
+      {scenarios.length ? <ScenarioTable rows={scenarios} /> : null}
       {result.method_comparison?.rows?.length ? <MethodComparisonTable rows={result.method_comparison.rows} /> : null}
 
       {result.interpretation && (
@@ -71,6 +84,24 @@ export function SimulationResultPanel({ result, kind = "time" }: Props) {
   );
 }
 
+function ScenarioTable({ rows }: { rows: ScenarioRow[] }) {
+  return (
+    <Card>
+      <CardTitle>Comparacion de escenarios</CardTitle>
+      <div className="mt-4 overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr><th className="px-4 py-3">Escenario</th><th className="px-4 py-3">Max I</th><th className="px-4 py-3">Max V</th><th className="px-4 py-3">Final I</th><th className="px-4 py-3">Final V</th><th className="px-4 py-3">Riesgo</th></tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {rows.map((row) => <tr key={row.name}><td className="px-4 py-3 font-medium text-slate-900">{row.name}</td><td className="px-4 py-3 text-slate-600">{formatNumber(row.max_I, 1)}</td><td className="px-4 py-3 text-slate-600">{formatScientific(row.max_V)}</td><td className="px-4 py-3 text-slate-600">{formatNumber(row.final_I, 1)}</td><td className="px-4 py-3 text-slate-600">{formatScientific(row.final_V)}</td><td className="px-4 py-3"><Badge risk={row.risk?.risk_level} /></td></tr>)}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 function MethodComparisonTable({ rows }: { rows: MethodComparisonRow[] }) {
   return (
     <Card>
@@ -79,14 +110,7 @@ function MethodComparisonTable({ rows }: { rows: MethodComparisonRow[] }) {
       <div className="mt-4 overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Metodo</th>
-              <th className="px-4 py-3">Final V</th>
-              <th className="px-4 py-3">Max V</th>
-              <th className="px-4 py-3">t Max V</th>
-              <th className="px-4 py-3">Final I</th>
-              <th className="px-4 py-3">Max I</th>
-            </tr>
+            <tr><th className="px-4 py-3">Metodo</th><th className="px-4 py-3">Final V</th><th className="px-4 py-3">Max V</th><th className="px-4 py-3">t Max V</th><th className="px-4 py-3">Final I</th><th className="px-4 py-3">Max I</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {rows.map((row) => (
