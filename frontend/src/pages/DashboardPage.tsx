@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Database, ShieldCheck, Siren, TrendingUp } from "lucide-react";
 import { getLocationAnalytics, getOverview, getRiskTable } from "../api/analyticsApi";
 import { getApiErrorMessage } from "../api/client";
 import { getLatestMeasurements, getLocations } from "../api/measurementsApi";
@@ -9,12 +10,14 @@ import { LocationSelector } from "../components/dashboard/LocationSelector";
 import { RiskTable } from "../components/dashboard/RiskTable";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { PageHeader } from "../components/layout/PageHeader";
+import { Badge } from "../components/ui/Badge";
 import { Card, CardTitle } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
 import { LocationAnalytics, Overview, RiskResult } from "../types/analytics";
 import { LocationSummary, Measurement } from "../types/measurement";
+import { formatNumber, formatPercentTrend } from "../utils/formatters";
 
 export function DashboardPage() {
   const [overview, setOverview] = useState<Overview>();
@@ -30,18 +33,31 @@ export function DashboardPage() {
     async function load() {
       setLoading(true);
       setError("");
-      try {
-        const [overviewData, riskData, latestData, locationsData] = await Promise.all([getOverview(), getRiskTable(), getLatestMeasurements(), getLocations()]);
-        setOverview(overviewData);
-        setRiskRows(riskData);
-        setLatest(latestData);
-        setLocations(locationsData);
-        setSelected(locationsData[0]?.location_name ?? riskData[0]?.location_name ?? "");
-      } catch (err) {
-        setError(getApiErrorMessage(err));
-      } finally {
-        setLoading(false);
-      }
+      const [overviewResult, riskResult, latestResult, locationsResult] = await Promise.allSettled([
+        getOverview(),
+        getRiskTable(),
+        getLatestMeasurements(),
+        getLocations(),
+      ]);
+
+      const errors: string[] = [];
+      if (overviewResult.status === "fulfilled") setOverview(overviewResult.value);
+      else errors.push(getApiErrorMessage(overviewResult.reason));
+
+      if (riskResult.status === "fulfilled") setRiskRows(riskResult.value);
+      else errors.push(getApiErrorMessage(riskResult.reason));
+
+      if (latestResult.status === "fulfilled") setLatest(latestResult.value);
+      else errors.push(getApiErrorMessage(latestResult.reason));
+
+      if (locationsResult.status === "fulfilled") setLocations(locationsResult.value);
+      else errors.push(getApiErrorMessage(locationsResult.reason));
+
+      const loadedLocations = locationsResult.status === "fulfilled" ? locationsResult.value : [];
+      const loadedRisk = riskResult.status === "fulfilled" ? riskResult.value : [];
+      setSelected(loadedLocations[0]?.location_name ?? loadedRisk[0]?.location_name ?? "");
+      if (errors.length) setError([...new Set(errors)].join(" "));
+      setLoading(false);
     }
     load();
   }, []);
@@ -52,28 +68,72 @@ export function DashboardPage() {
   }, [selected]);
 
   const currentRisk = useMemo(() => riskRows.find((row) => row.location_name === selected), [riskRows, selected]);
+  const selectedSeries = locationData?.series ?? locationData?.time_series ?? [];
+  const trend14 = overview?.trend_14d ?? overview?.trend_last_14_days;
 
   return (
     <>
-      <PageHeader title="Dashboard epidemiologico" description="Monitoreo temprano de carga viral en aguas residuales, tendencias de riesgo y senales anticipatorias frente a casos clinicos." />
+      <PageHeader title="Dashboard epidemiologico" description="Centro de monitoreo temprano de carga viral en aguas residuales, riesgo por ubicación y señales anticipatorias frente a casos clínicos." />
       {error && <div className="mb-4"><ErrorState message={error} /></div>}
       {loading ? <LoadingState /> : (
         <div className="space-y-6">
+          <Card className="overflow-hidden border-sentinel-100 bg-gradient-to-r from-sentinel-50 via-white to-cyan-50">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Badge risk={overview?.latest_risk_level} />
+                  <Badge tone={overview?.early_warning_locations ? "red" : "green"}>{overview?.early_warning_locations ? "Alerta temprana" : "Monitoreo normal"}</Badge>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-950">Estado epidemiologico general</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  {overview?.status_message ?? "Carga datos demo o mediciones reales para activar el monitoreo epidemiológico ambiental."}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
+                <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-200">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500"><TrendingUp className="h-4 w-4" /> Tendencia 14d</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-950">{formatPercentTrend(trend14)}</div>
+                </div>
+                <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-200">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500"><Siren className="h-4 w-4" /> Alertas</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-950">{formatNumber(overview?.early_warning_locations)}</div>
+                </div>
+                <div className="rounded-xl bg-white/80 p-4 ring-1 ring-slate-200">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500"><Database className="h-4 w-4" /> Datos</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-950">{formatNumber(overview?.total_measurements)}</div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <SummaryCards overview={overview} />
           {!latest.length && !riskRows.length ? <EmptyState title="No hay mediciones" message="Carga datos demo desde Dataset para activar el dashboard." /> : null}
+
           <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
             <Card>
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <CardTitle>Carga viral por ubicacion</CardTitle>
+                <div>
+                  <CardTitle>Carga viral, media movil, casos y lluvia</CardTitle>
+                  <p className="mt-1 text-sm text-slate-500">Serie temporal con umbrales de riesgo alto y crítico.</p>
+                </div>
                 {locations.length > 0 && <div className="w-full md:w-72"><LocationSelector locations={locations} value={selected} onChange={setSelected} /></div>}
               </div>
-              {locationData?.series?.length ? <ViralLoadChart data={locationData.series} /> : <EmptyState message="Selecciona una ubicacion con datos para ver la serie temporal." />}
+              {selectedSeries.length ? (
+                <ViralLoadChart data={selectedSeries} highThreshold={locationData?.thresholds?.high} criticalThreshold={locationData?.thresholds?.critical} />
+              ) : <EmptyState message="Selecciona una ubicacion con datos para ver la serie temporal." />}
             </Card>
             <EarlyWarningPanel analytics={locationData} risk={currentRisk} />
           </div>
-          <div className="grid gap-6 xl:grid-cols-2">
+
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             <Card>
-              <CardTitle>Tabla de riesgo</CardTitle>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle>Ranking de riesgo por ubicacion</CardTitle>
+                  <p className="mt-1 text-sm text-slate-500">Ordenado por score de riesgo, tendencia y alerta temprana.</p>
+                </div>
+                <ShieldCheck className="h-5 w-5 text-sentinel-600" />
+              </div>
               <div className="mt-4">{riskRows.length ? <RiskTable rows={riskRows} /> : <EmptyState />}</div>
             </Card>
             <Card>
