@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Database, ShieldCheck, Siren, TrendingUp } from "lucide-react";
-import { getLocationAnalytics, getOverview, getRiskTable } from "../api/analyticsApi";
+import { Activity, CalendarClock, Database, ShieldCheck, Siren, TrendingUp } from "lucide-react";
+import { getLocationAnalytics, getLocationForecast, getOverview, getRiskTable } from "../api/analyticsApi";
 import { getApiErrorMessage } from "../api/client";
 import { getLatestMeasurements, getLocations } from "../api/measurementsApi";
+import { ForecastChart } from "../components/charts/ForecastChart";
 import { ViralLoadChart } from "../components/charts/ViralLoadChart";
 import { EarlyWarningPanel } from "../components/dashboard/EarlyWarningPanel";
 import { LatestMeasurementsTable } from "../components/dashboard/LatestMeasurementsTable";
@@ -15,9 +16,9 @@ import { Card, CardTitle } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
-import { LocationAnalytics, Overview, RiskResult } from "../types/analytics";
+import { LocationAnalytics, LocationForecast, Overview, RiskResult } from "../types/analytics";
 import { LocationSummary, Measurement } from "../types/measurement";
-import { formatNumber, formatPercentTrend } from "../utils/formatters";
+import { formatDate, formatNumber, formatPercentTrend, formatScientific } from "../utils/formatters";
 
 export function DashboardPage() {
   const [overview, setOverview] = useState<Overview>();
@@ -26,6 +27,8 @@ export function DashboardPage() {
   const [locations, setLocations] = useState<LocationSummary[]>([]);
   const [selected, setSelected] = useState("");
   const [locationData, setLocationData] = useState<LocationAnalytics>();
+  const [forecast, setForecast] = useState<LocationForecast>();
+  const [forecastLoading, setForecastLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -64,12 +67,20 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (!selected) return;
-    getLocationAnalytics(selected).then(setLocationData).catch((err) => setError(getApiErrorMessage(err)));
+    setForecastLoading(true);
+    Promise.allSettled([getLocationAnalytics(selected), getLocationForecast(selected, 21, 45)]).then(([analyticsResult, forecastResult]) => {
+      if (analyticsResult.status === "fulfilled") setLocationData(analyticsResult.value);
+      else setError(getApiErrorMessage(analyticsResult.reason));
+
+      if (forecastResult.status === "fulfilled") setForecast(forecastResult.value);
+      else setError(getApiErrorMessage(forecastResult.reason));
+    }).finally(() => setForecastLoading(false));
   }, [selected]);
 
   const currentRisk = useMemo(() => riskRows.find((row) => row.location_name === selected), [riskRows, selected]);
   const selectedSeries = locationData?.series ?? locationData?.time_series ?? [];
   const trend14 = overview?.trend_14d ?? overview?.trend_last_14_days;
+  const forecastSummary = forecast?.summary;
 
   return (
     <>
@@ -123,6 +134,56 @@ export function DashboardPage() {
               ) : <EmptyState message="Selecciona una ubicacion con datos para ver la serie temporal." />}
             </Card>
             <EarlyWarningPanel analytics={locationData} risk={currentRisk} />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
+            <Card>
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle>Predicción de carga viral y escenarios</CardTitle>
+                  <p className="mt-1 text-sm text-slate-500">Proyección log-lineal a 21 días con banda de incertidumbre y escenarios de mitigación o crecimiento alto.</p>
+                </div>
+                {forecastSummary?.forecast_risk_level && <Badge risk={forecastSummary.forecast_risk_level} />}
+              </div>
+              {forecastLoading ? <LoadingState /> : forecast?.forecast?.length ? <ForecastChart forecast={forecast} /> : <EmptyState title="Sin predicción" message="Se necesitan al menos 7 mediciones para proyectar la tendencia." />}
+            </Card>
+
+            <Card>
+              <div className="mb-4 flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-sentinel-600" />
+                <CardTitle>Lectura predictiva</CardTitle>
+              </div>
+              {forecastSummary?.status === "ok" ? (
+                <div className="space-y-4 text-sm text-slate-600">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-slate-500">Riesgo proyectado</p>
+                      <p className="mt-1 text-lg font-bold text-slate-950">{forecastSummary.forecast_risk_level ?? "-"}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-slate-500">Cambio esperado</p>
+                      <p className="mt-1 text-lg font-bold text-slate-950">{formatPercentTrend(forecastSummary.projected_change_percent)}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-slate-500">Máximo predicho</p>
+                      <p className="mt-1 text-lg font-bold text-slate-950">{formatScientific(forecastSummary.max_predicted_viral_concentration_gc_l)}</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-slate-500">Duplicación</p>
+                      <p className="mt-1 text-lg font-bold text-slate-950">{forecastSummary.doubling_time_days ? `${formatNumber(forecastSummary.doubling_time_days, 1)} días` : "No aplica"}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-sentinel-100 bg-sentinel-50 p-4">
+                    <div className="mb-2 flex items-center gap-2 font-semibold text-slate-900"><Activity className="h-4 w-4 text-sentinel-700" /> Recomendación automática</div>
+                    <p>{forecastSummary.recommendation}</p>
+                  </div>
+                  <div className="text-xs leading-5 text-slate-500">
+                    <p>Umbral alto: {forecastSummary.high_threshold_crossing_date ? formatDate(forecastSummary.high_threshold_crossing_date) : "no cruza en el horizonte"}.</p>
+                    <p>Umbral crítico: {forecastSummary.critical_threshold_crossing_date ? formatDate(forecastSummary.critical_threshold_crossing_date) : "no cruza en el horizonte"}.</p>
+                  </div>
+                </div>
+              ) : <EmptyState title="Predicción no disponible" message={forecastSummary?.message ?? "Carga más datos para habilitar la predicción."} />}
+            </Card>
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
