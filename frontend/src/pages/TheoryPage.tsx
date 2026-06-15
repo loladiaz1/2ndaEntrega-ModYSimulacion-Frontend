@@ -11,7 +11,10 @@ const sections = [
   ["Bifurcaciones", "El umbral beta > gamma separa regimenes: si la transmision efectiva supera la recuperacion, el equilibrio libre de brote pierde estabilidad y aparece un regimen con infectados persistentes."],
   ["Sistemas no homogeneos", "Lluvias, shocks de brote, descargas localizadas o cambios de caudal introducen terminos dependientes del tiempo. Estos eventos explican picos, diluciones o falsas caidas de senal."],
   ["Region segura y Lyapunov", "Una funcion tipo V_risk(I,V) penaliza excesos sobre umbrales seguros. Si disminuye, el sistema se aproxima a una region aceptable; si aumenta, sugiere alerta operativa."],
-  ["Relacion con Modelado y Simulacion", "El proyecto integra ecuaciones diferenciales, metodos numericos, estabilidad local, bifurcaciones, sistemas no autonomos, visualizacion de datos y validacion interpretativa aplicada."],
+  ["Prediccion aplicada", "La plataforma ajusta una tendencia log-lineal sobre la carga viral historica y proyecta escenarios a 21 dias. Esto permite anticipar cruces de umbral alto o critico y comparar mitigacion contra crecimiento alto."],
+  ["Calibracion desde datos", "A partir de mediciones historicas se estiman parametros como beta, gamma, alpha, k, d, S, I0 y V0. Esos parametros quedan listos para ejecutar modelos 1D y 2D con sentido empirico."],
+  ["Reporte ejecutivo", "El sistema genera un reporte imprimible con resumen, ranking predictivo, recomendaciones y relacion con los temas de la materia. Puede guardarse como PDF desde el navegador."],
+  ["Relacion con Modelado y Simulacion", "El proyecto integra ecuaciones diferenciales, metodos numericos, estabilidad local, bifurcaciones, sistemas no autonomos, prediccion, visualizacion de datos y validacion interpretativa aplicada."],
 ];
 
 export function TheoryPage() {
