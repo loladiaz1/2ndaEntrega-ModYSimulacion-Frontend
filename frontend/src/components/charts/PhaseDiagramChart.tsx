@@ -41,15 +41,61 @@ function EquilibriumMarker(props: any) {
   );
 }
 
+function InvisiblePoint() {
+  return null;
+}
+
+function buildTrajectories(result?: SimulationResult) {
+  const data = getPhaseData(result);
+  const p = result?.parameters ?? {};
+  const beta = Number(p.beta ?? 0.35);
+  const K = Number(p.K ?? 100000);
+  const gamma = Number(p.gamma ?? 0.12);
+  const alpha = Number(p.alpha ?? 25);
+  const k = Number(p.k ?? 0.15);
+  const d = Number(p.d ?? 0.05);
+  if (!data.length || !Number.isFinite(beta) || !Number.isFinite(K)) return [];
+  const iValues = data.map((item) => Number(item.I)).filter(Number.isFinite);
+  const vValues = data.map((item) => Number(item.V)).filter(Number.isFinite);
+  const iMin = Math.min(...iValues);
+  const iMax = Math.max(...iValues);
+  const vMin = Math.min(...vValues);
+  const vMax = Math.max(...vValues);
+  const seeds = [
+    [iMax * 0.05, vMax * 0.15],
+    [iMax * 0.15, vMax * 0.70],
+    [iMax * 0.35, vMax * 0.25],
+    [iMax * 0.60, vMax * 0.80],
+    [iMax * 0.85, vMax * 0.35],
+  ];
+  return seeds.map((seed, trajectoryIndex) => {
+    let I = seed[0];
+    let V = seed[1];
+    const path = [];
+    const dt = 0.25;
+    for (let step = 0; step < 120; step += 1) {
+      path.push({ I, V, trajectoryIndex });
+      const dI = beta * I * (1 - I / K) - gamma * I;
+      const dV = alpha * I - (k + d) * V;
+      const scaleI = Math.max(iMax - iMin, 1);
+      const scaleV = Math.max(vMax - vMin, 1);
+      I = Math.max(iMin, Math.min(iMax, I + (dI / scaleI) * scaleI * dt));
+      V = Math.max(vMin, Math.min(vMax, V + (dV / scaleV) * scaleV * dt));
+    }
+    return path;
+  });
+}
+
 export function PhaseDiagramChart({ result }: { result?: SimulationResult }) {
   const data = getPhaseData(result);
   const equilibria = getEquilibriumPoints(result);
   const dVNullcline = result?.nullcline_points?.dV_dt ?? [];
   const dINullcline = result?.nullcline_points?.dI_dt ?? [];
+  const trajectories = buildTrajectories(result);
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-cyan-100 bg-cyan-50/70 p-3 text-xs leading-5 text-slate-600">
-        El campo vectorial muestra direccion y velocidad local del sistema. Las nulclinas separan regiones donde una variable deja de crecer, y los equilibrios permiten leer estabilidad local como en los diagramas de fase de la materia.
+        El campo vectorial muestra direccion y velocidad local del sistema. Las nulclinas separan regiones donde una variable deja de crecer, los equilibrios permiten leer estabilidad local y las trayectorias muestran órbitas simuladas desde condiciones iniciales distintas.
       </div>
       <div className="h-[520px] rounded-xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
         <ResponsiveContainer>
@@ -67,6 +113,9 @@ export function PhaseDiagramChart({ result }: { result?: SimulationResult }) {
             />
             <Legend verticalAlign="top" />
             <Scatter name="Campo vectorial" data={data} shape={<VectorArrow />} />
+            {trajectories.map((trajectory, index) => (
+              <Scatter key={index} name={`Trayectoria ${index + 1}`} data={trajectory} line={{ stroke: "#334155", strokeWidth: 1.8, strokeOpacity: 0.55 }} shape={<InvisiblePoint />} />
+            ))}
             <Scatter name="Nulclina dV/dt = 0" data={dVNullcline} fill="#7c3aed" line={{ stroke: "#7c3aed", strokeWidth: 2 }} shape="circle" />
             <Scatter name="Nulclina dI/dt = 0" data={dINullcline} fill="#f97316" line={{ stroke: "#f97316", strokeWidth: 2 }} shape="circle" />
             <Scatter name="Equilibrios" data={equilibria} shape={<EquilibriumMarker />} />
