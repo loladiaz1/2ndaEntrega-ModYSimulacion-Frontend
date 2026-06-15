@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { getExecutiveReport, getMeasurementsCsvUrl, ExecutiveReport } from "../api/analyticsApi";
-import { getApiErrorMessage } from "../api/client";
+import { apiBaseUrl, getApiErrorMessage } from "../api/client";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { ErrorState } from "../components/ui/ErrorState";
 import { LoadingState } from "../components/ui/LoadingState";
-import { formatDate, formatNumber, formatPercentTrend } from "../utils/formatters";
+import { formatDate, formatNumber, formatPercentTrend, formatScientific } from "../utils/formatters";
 
 export function ReportsPage() {
-  const [report, setReport] = useState<ExecutiveReport>();
+  const [report, setReport] = useState<ExecutiveReport & { predictive_ranking?: any[]; map_risk?: any[] }>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +34,7 @@ export function ReportsPage() {
 
   return (
     <>
-      <PageHeader title="Reportes y exportacion" description="Genera un resumen ejecutivo del monitoreo, recomendaciones, mapeo academico y exportacion CSV/JSON." />
+      <PageHeader title="Reportes y exportacion" description="Genera un resumen ejecutivo del monitoreo, recomendaciones, ranking predictivo, mapeo academico y exportacion CSV/JSON." />
       {error && <div className="mb-4"><ErrorState message={error} /></div>}
       {loading ? <LoadingState /> : report ? (
         <div className="space-y-6">
@@ -47,6 +47,7 @@ export function ReportsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={downloadJson}>Descargar JSON</Button>
+                <a href={apiBaseUrl + "/analytics/report/html"} target="_blank" rel="noreferrer"><Button variant="ghost">Reporte imprimible</Button></a>
                 <a href={getMeasurementsCsvUrl()}><Button variant="secondary">Exportar CSV</Button></a>
               </div>
             </div>
@@ -65,6 +66,21 @@ export function ReportsPage() {
               {report.recommendations.map((item) => <li key={item} className="rounded-md bg-slate-50 p-3">{item}</li>)}
             </ul>
           </Card>
+
+          {report.predictive_ranking?.length ? (
+            <Card>
+              <CardTitle>Ranking predictivo para el informe</CardTitle>
+              <p className="mt-1 text-sm text-slate-500">Ordenado por score predictivo, riesgo proyectado y crecimiento esperado.</p>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Ubicacion</th><th className="px-4 py-3">Riesgo proyectado</th><th className="px-4 py-3">Score</th><th className="px-4 py-3">Cambio</th><th className="px-4 py-3">Maximo predicho</th></tr></thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {report.predictive_ranking.slice(0, 8).map((row) => <tr key={row.location_name}><td className="px-4 py-3 font-medium text-slate-900">{row.location_name}</td><td className="px-4 py-3"><Badge risk={row.forecast_risk_level} /></td><td className="px-4 py-3 text-slate-600">{formatNumber(row.predictive_score, 1)}</td><td className="px-4 py-3 text-slate-600">{formatPercentTrend(row.projected_change_percent)}</td><td className="px-4 py-3 text-slate-600">{formatScientific(row.max_predicted_viral_concentration_gc_l)}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          ) : null}
 
           <Card>
             <CardTitle>Relacion con Modelado y Simulacion</CardTitle>
