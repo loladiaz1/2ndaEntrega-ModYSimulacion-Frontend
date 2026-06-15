@@ -33,13 +33,43 @@ function downloadBlob(filename: string, content: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadChartSvg() {
+function getChartSvgContent() {
   const svg = document.querySelector("#simulation-result-chart svg");
-  if (!svg) return;
+  if (!svg) return null;
   const cloned = svg.cloneNode(true) as SVGElement;
   cloned.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  const content = new XMLSerializer().serializeToString(cloned);
+  return new XMLSerializer().serializeToString(cloned);
+}
+
+function downloadChartSvg() {
+  const content = getChartSvgContent();
+  if (!content) return;
   downloadBlob("wastewater-sentinel-chart.svg", content, "image/svg+xml;charset=utf-8");
+}
+
+function downloadChartPng() {
+  const content = getChartSvgContent();
+  if (!content) return;
+  const svgUrl = URL.createObjectURL(new Blob([content], { type: "image/svg+xml;charset=utf-8" }));
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    const scale = 2;
+    canvas.width = Math.max(1200, image.width * scale);
+    canvas.height = Math.max(700, image.height * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pngUrl = canvas.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = pngUrl;
+    a.download = "wastewater-sentinel-chart.png";
+    a.click();
+    URL.revokeObjectURL(svgUrl);
+  };
+  image.src = svgUrl;
 }
 
 export function SimulationResultPanel({ result, kind = "time" }: Props) {
@@ -61,6 +91,7 @@ export function SimulationResultPanel({ result, kind = "time" }: Props) {
             <p className="mt-1 text-sm text-slate-500">{result.model_type ?? "modelo"} · método {result.method_used ?? "analítico"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" type="button" onClick={() => downloadChartPng()}>Descargar PNG</Button>
             <Button variant="ghost" type="button" onClick={() => downloadChartSvg()}>Descargar SVG</Button>
             <Button variant="ghost" type="button" onClick={() => downloadBlob("simulation-result.json", JSON.stringify(result, null, 2), "application/json;charset=utf-8")}>Exportar JSON</Button>
             {result.risk?.risk_level && <Badge risk={result.risk.risk_level} />}
