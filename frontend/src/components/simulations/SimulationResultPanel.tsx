@@ -4,6 +4,7 @@ import { SimulationTimeSeriesChart } from "../charts/SimulationTimeSeriesChart";
 import { MethodComparisonRow, SimulationResult } from "../../types/simulation";
 import { formatNumber, formatScientific } from "../../utils/formatters";
 import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
 import { Card, CardTitle } from "../ui/Card";
 
 interface Props {
@@ -20,6 +21,25 @@ interface ScenarioRow {
   max_I_time?: number;
   max_V_time?: number;
   risk?: { risk_level?: string; risk_score?: number };
+}
+
+function downloadBlob(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadChartSvg() {
+  const svg = document.querySelector("#simulation-result-chart svg");
+  if (!svg) return;
+  const cloned = svg.cloneNode(true) as SVGElement;
+  cloned.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const content = new XMLSerializer().serializeToString(cloned);
+  downloadBlob("wastewater-sentinel-chart.svg", content, "image/svg+xml;charset=utf-8");
 }
 
 export function SimulationResultPanel({ result, kind = "time" }: Props) {
@@ -41,11 +61,15 @@ export function SimulationResultPanel({ result, kind = "time" }: Props) {
             <p className="mt-1 text-sm text-slate-500">{result.model_type ?? "modelo"} · método {result.method_used ?? "analítico"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" type="button" onClick={() => downloadChartSvg()}>Descargar SVG</Button>
+            <Button variant="ghost" type="button" onClick={() => downloadBlob("simulation-result.json", JSON.stringify(result, null, 2), "application/json;charset=utf-8")}>Exportar JSON</Button>
             {result.risk?.risk_level && <Badge risk={result.risk.risk_level} />}
             {stability && <Badge tone="cyan">{stability}</Badge>}
           </div>
         </div>
-        {kind === "bifurcation" ? <BifurcationChart result={result} /> : kind === "phase" ? <PhaseDiagramChart result={result} /> : <SimulationTimeSeriesChart result={result} />}
+        <div id="simulation-result-chart">
+          {kind === "bifurcation" ? <BifurcationChart result={result} /> : kind === "phase" ? <PhaseDiagramChart result={result} /> : <SimulationTimeSeriesChart result={result} />}
+        </div>
       </Card>
 
       <QualitativeGraphGuide kind={kind} stability={stability} result={result} />
