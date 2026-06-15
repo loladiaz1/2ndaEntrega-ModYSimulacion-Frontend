@@ -1,5 +1,5 @@
 import { apiBaseUrl, apiClient } from "./client";
-import { LocationAnalytics, Overview, RiskResult } from "../types/analytics";
+import { LocationAnalytics, LocationForecast, Overview, RiskResult } from "../types/analytics";
 
 export interface ExecutiveReport {
   generated_at: string;
@@ -27,7 +27,16 @@ export async function getRiskTable() {
 }
 
 export async function getLocationAnalytics(locationName: string) {
-  const { data } = await apiClient.get<LocationAnalytics>(`/analytics/location/${encodeURIComponent(locationName)}`);
+  const encodedLocation = encodeURIComponent(locationName);
+  const { data } = await apiClient.get<LocationAnalytics>("/analytics/location/" + encodedLocation);
+  return data;
+}
+
+export async function getLocationForecast(locationName: string, horizon = 21, window = 45) {
+  const encodedLocation = encodeURIComponent(locationName);
+  const { data } = await apiClient.get<LocationForecast>("/analytics/location/" + encodedLocation + "/forecast", {
+    params: { horizon, window },
+  });
   return data;
 }
 
@@ -37,5 +46,5 @@ export async function getExecutiveReport() {
 }
 
 export function getMeasurementsCsvUrl() {
-  return `${apiBaseUrl}/analytics/export/measurements.csv`;
+  return apiBaseUrl + "/analytics/export/measurements.csv";
 }
