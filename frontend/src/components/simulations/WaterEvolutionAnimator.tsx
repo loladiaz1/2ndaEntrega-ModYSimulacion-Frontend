@@ -3,7 +3,7 @@ import { Pause, Play } from "lucide-react";
 import { SimulationResult } from "../../types/simulation";
 import { formatNumber, formatScientific } from "../../utils/formatters";
 import { Button } from "../ui/Button";
-import { Card, CardTitle } from "../ui/Card";
+import { Card } from "../ui/Card";
 
 interface EigenView {
   eigenvalues: number[];
@@ -76,7 +76,7 @@ export function WaterEvolutionAnimator({ result }: { result: SimulationResult })
     <Card className="overflow-hidden border-cyan-100 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <CardTitle className="text-white">Animacion de evolucion en agua</CardTitle>
+          <h3 className="text-base font-semibold text-white">Animacion de evolucion en agua</h3>
           <p className="mt-1 text-sm leading-6 text-cyan-100">Timeline visual de la señal viral: partículas, intensidad del agua, estado epidemiológico y lectura local de autovalores/autovectores.</p>
         </div>
         <Button type="button" variant="secondary" onClick={() => setPlaying((value) => !value)}>
@@ -88,8 +88,8 @@ export function WaterEvolutionAnimator({ result }: { result: SimulationResult })
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <div>
           <div className="relative h-80 overflow-hidden rounded-2xl border border-cyan-300/20 bg-cyan-900/30 shadow-2xl" style={{ perspective: "900px" }}>
-            <div className="absolute inset-x-8 bottom-8 top-10 rotate-x-[58deg] rounded-[2rem] border border-cyan-200/40 bg-cyan-400/10 shadow-[0_0_60px_rgba(34,211,238,0.25)]" />
-            <div className="absolute inset-x-10 bottom-10 top-12 rotate-x-[58deg] rounded-[2rem]" style={{ background: `rgba(34, 211, 238, ${0.18 + intensity * 0.45})`, boxShadow: `0 0 ${40 + intensity * 90}px rgba(34,211,238,${0.25 + intensity * 0.45})` }} />
+            <div className="absolute inset-x-8 bottom-8 top-10 rounded-[2rem] border border-cyan-200/40 bg-cyan-400/10 shadow-[0_0_60px_rgba(34,211,238,0.25)]" style={{ transform: "rotateX(58deg)" }} />
+            <div className="absolute inset-x-10 bottom-10 top-12 rounded-[2rem]" style={{ transform: "rotateX(58deg)", background: `rgba(34, 211, 238, ${0.18 + intensity * 0.45})`, boxShadow: `0 0 ${40 + intensity * 90}px rgba(34,211,238,${0.25 + intensity * 0.45})` }} />
             {particles.map((particle, particleIndex) => {
               const visible = ((particleIndex + index) % 10) / 10 < intensity;
               return (
