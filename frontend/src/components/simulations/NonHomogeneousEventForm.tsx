@@ -8,7 +8,7 @@ import { Select } from "../ui/Select";
 import { ErrorState } from "../ui/ErrorState";
 import { methodOptions, toNumberPayload } from "./formUtils";
 
-const initial = { event_type: "outbreak_shock", base_source: "50000", amplitude: "15000", frequency: "0.1", shock_start: "15", shock_end: "25", shock_magnitude: "90000", rainfall_start: "35", rainfall_end: "45", dilution_multiplier: "0.55", k: "0.15", d: "0.05", V0: "10000", t_final: "70", step: "0.5", method: "rk4" };
+const initial = { event_type: "outbreak_shock", base_source: "50000", amplitude: "15000", frequency: "0.1", shock_start: "15", shock_end: "25", shock_magnitude: "90000", rainfall_start: "35", rainfall_end: "45", dilution_multiplier: "1.8", k: "0.15", d: "0.05", V0: "10000", t_final: "70", step: "0.5", method: "rk4" };
 
 export function NonHomogeneousEventForm({ onResult }: { onResult: (result: SimulationResult) => void }) {
   const [values, setValues] = useState(initial);
@@ -36,6 +36,7 @@ export function NonHomogeneousEventForm({ onResult }: { onResult: (result: Simul
           <Input key={key} label={key} value={values[key as keyof typeof values]} onChange={(e) => setValues({ ...values, [key]: e.target.value })} />
         ))}
       </div>
+      <p className="rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-500">Para lluvia, dilution_multiplier debe ser mayor o igual a 1 porque representa aumento de remocion/dilucion durante el evento.</p>
       <Button disabled={loading}>{loading ? "Simulando..." : "Ejecutar evento"}</Button>
     </form>
   );
