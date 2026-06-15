@@ -4,6 +4,7 @@ import { AboutPage } from "./pages/AboutPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DatasetPage } from "./pages/DatasetPage";
 import { MeasurementsPage } from "./pages/MeasurementsPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { SimulationsPage } from "./pages/SimulationsPage";
 import { TheoryPage } from "./pages/TheoryPage";
 
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/measurements" element={<MeasurementsPage />} />
         <Route path="/dataset" element={<DatasetPage />} />
         <Route path="/simulations" element={<SimulationsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/theory" element={<TheoryPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
