@@ -9,6 +9,7 @@ import { ScenarioCompareForm } from "../components/simulations/ScenarioCompareFo
 import { SimulationHistoryPanel } from "../components/simulations/SimulationHistoryPanel";
 import { SimulationResultPanel } from "../components/simulations/SimulationResultPanel";
 import { ViralDecayForm } from "../components/simulations/ViralDecayForm";
+import { WaterEvolutionAnimator } from "../components/simulations/WaterEvolutionAnimator";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -61,6 +62,7 @@ export function SimulationsPage() {
         </div>
         <div className="space-y-6">
           {showResult ? <SimulationResultPanel result={result} kind={kind} /> : <Card className="text-sm leading-6 text-slate-600">La calibracion estima parametros desde mediciones históricas y los deja listos para justificar el modelo en el informe.</Card>}
+          {showResult && result?.time?.length ? <WaterEvolutionAnimator result={result} /> : null}
           {showResult && <LyapunovRiskPanel result={result} />}
         </div>
       </div>
