@@ -1,7 +1,45 @@
-import { CartesianGrid, Legend, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
+import { CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import { SimulationResult } from "../../types/simulation";
 import { getEquilibriumPoints, getPhaseData } from "../../utils/chartUtils";
 import { formatNumber, formatScientific } from "../../utils/formatters";
+
+function VectorArrow(props: any) {
+  const { cx, cy, payload } = props;
+  if (cx === undefined || cy === undefined || !payload) return null;
+  const dI = Number(payload.dI ?? 0);
+  const dV = Number(payload.dV ?? 0);
+  const magnitude = Math.sqrt(dI * dI + dV * dV);
+  if (!magnitude) return <circle cx={cx} cy={cy} r={2} fill="#94a3b8" />;
+  const length = 14;
+  const ux = dI / magnitude;
+  const uy = dV / magnitude;
+  const x2 = cx + ux * length;
+  const y2 = cy - uy * length;
+  const angle = Math.atan2(cy - y2, x2 - cx);
+  const head = 4;
+  const xh1 = x2 - head * Math.cos(angle - Math.PI / 6);
+  const yh1 = y2 + head * Math.sin(angle - Math.PI / 6);
+  const xh2 = x2 - head * Math.cos(angle + Math.PI / 6);
+  const yh2 = y2 + head * Math.sin(angle + Math.PI / 6);
+  const opacity = Math.max(0.35, Math.min(0.95, magnitude / 100000));
+  return (
+    <g opacity={opacity}>
+      <line x1={cx} y1={cy} x2={x2} y2={y2} stroke="#0e7490" strokeWidth={1.6} strokeLinecap="round" />
+      <path d={`M ${x2} ${y2} L ${xh1} ${yh1} L ${xh2} ${yh2} Z`} fill="#0e7490" />
+    </g>
+  );
+}
+
+function EquilibriumMarker(props: any) {
+  const { cx, cy, payload } = props;
+  if (cx === undefined || cy === undefined) return null;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={8} fill="#fee2e2" stroke="#dc2626" strokeWidth={2} />
+      <text x={cx + 10} y={cy - 10} fontSize={11} fill="#991b1b" fontWeight={700}>{payload?.classification ?? "eq"}</text>
+    </g>
+  );
+}
 
 export function PhaseDiagramChart({ result }: { result?: SimulationResult }) {
   const data = getPhaseData(result);
@@ -9,24 +47,32 @@ export function PhaseDiagramChart({ result }: { result?: SimulationResult }) {
   const dVNullcline = result?.nullcline_points?.dV_dt ?? [];
   const dINullcline = result?.nullcline_points?.dI_dt ?? [];
   return (
-    <div className="h-96">
-      <ResponsiveContainer>
-        <ScatterChart margin={{ top: 20, right: 28, bottom: 12, left: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="I" name="Infectados I" type="number" tickFormatter={(value) => formatNumber(Number(value), 0)} />
-          <YAxis dataKey="V" name="Carga viral V" type="number" tickFormatter={(value) => formatScientific(Number(value))} />
-          <ZAxis dataKey="magnitude" range={[18, 90]} />
-          <Tooltip
-            cursor={{ strokeDasharray: "3 3" }}
-            formatter={(value, name) => [typeof value === "number" ? formatScientific(value) : String(value), String(name)]}
-          />
-          <Legend />
-          <Scatter name="Campo vectorial" data={data} fill="#0891b2" fillOpacity={0.45} />
-          <Scatter name="Nulclina dV/dt = 0" data={dVNullcline} fill="#7c3aed" line shape="circle" />
-          <Scatter name="Nulclina dI/dt = 0" data={dINullcline} fill="#f97316" line shape="circle" />
-          <Scatter name="Equilibrios" data={equilibria} fill="#dc2626" shape="star" />
-        </ScatterChart>
-      </ResponsiveContainer>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-cyan-100 bg-cyan-50/70 p-3 text-xs leading-5 text-slate-600">
+        El campo vectorial muestra direccion y velocidad local del sistema. Las nulclinas separan regiones donde una variable deja de crecer, y los equilibrios permiten leer estabilidad local como en los diagramas de fase de la materia.
+      </div>
+      <div className="h-[520px] rounded-xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
+        <ResponsiveContainer>
+          <ScatterChart margin={{ top: 20, right: 36, bottom: 30, left: 18 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="I" name="Infectados I" type="number" tickFormatter={(value) => formatNumber(Number(value), 0)} label={{ value: "Infectados estimados I", position: "insideBottom", offset: -12 }} />
+            <YAxis dataKey="V" name="Carga viral V" type="number" tickFormatter={(value) => formatScientific(Number(value))} label={{ value: "Carga viral V", angle: -90, position: "insideLeft" }} />
+            <ZAxis dataKey="magnitude" range={[18, 80]} />
+            <ReferenceLine x={0} stroke="#94a3b8" strokeDasharray="4 4" />
+            <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="4 4" />
+            <Tooltip
+              cursor={{ strokeDasharray: "3 3" }}
+              formatter={(value, name) => [typeof value === "number" ? formatScientific(value) : String(value), String(name)]}
+              labelFormatter={() => "Estado local"}
+            />
+            <Legend verticalAlign="top" />
+            <Scatter name="Campo vectorial" data={data} shape={<VectorArrow />} />
+            <Scatter name="Nulclina dV/dt = 0" data={dVNullcline} fill="#7c3aed" line={{ stroke: "#7c3aed", strokeWidth: 2 }} shape="circle" />
+            <Scatter name="Nulclina dI/dt = 0" data={dINullcline} fill="#f97316" line={{ stroke: "#f97316", strokeWidth: 2 }} shape="circle" />
+            <Scatter name="Equilibrios" data={equilibria} shape={<EquilibriumMarker />} />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
