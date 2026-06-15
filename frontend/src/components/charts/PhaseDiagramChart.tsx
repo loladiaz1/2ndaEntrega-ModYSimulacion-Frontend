@@ -55,8 +55,8 @@ function buildTrajectories(result?: SimulationResult) {
   const k = Number(p.k ?? 0.15);
   const d = Number(p.d ?? 0.05);
   if (!data.length || !Number.isFinite(beta) || !Number.isFinite(K)) return [];
-  const iValues = data.map((item) => Number(item.I)).filter(Number.isFinite);
-  const vValues = data.map((item) => Number(item.V)).filter(Number.isFinite);
+  const iValues = data.map((item) => Number((item as Record<string, number>).I)).filter(Number.isFinite);
+  const vValues = data.map((item) => Number((item as Record<string, number>).V)).filter(Number.isFinite);
   const iMin = Math.min(...iValues);
   const iMax = Math.max(...iValues);
   const vMin = Math.min(...vValues);
